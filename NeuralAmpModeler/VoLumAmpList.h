@@ -200,9 +200,28 @@ public:
       DrawScrollbar(g, contentH, scrollbarW);
   }
 
+  // Zone model for the list, used by HitTest and the pointer handlers. Declared
+  // above them: the touch-deferred press stores a Hit in a member, and handler
+  // signatures are parsed eagerly (the original declarations sit below).
+  enum class EZone
+  {
+    None,
+    Factory,
+    CustomHeader,
+    CustomAdd,
+    CustomRow,
+    CustomEdit,
+    CustomDelete
+  };
+
+  struct Hit
+  {
+    EZone zone = EZone::None;
+    int idx = -1;
+  };
+
   void OnMouseDown(float x, float y, const IMouseMod& mod) override
   {
-    (void)mod;
     const auto pressed = mSecondPress.Press();
     ClearVoLumKnobSelection(this);
 
@@ -225,6 +244,26 @@ public:
     }
 
     const Hit hit = HitTest(x, y);
+
+    // iOS touch: never fire the zone on press — a press on a row is exactly how
+    // the list gets grabbed to scroll. Remember the hit and commit on release
+    // (OnMouseUp) only if the finger stayed put; drag scrolls the list instead.
+    if (mod.IsTouch())
+    {
+      mTouchID = mod.touchID;
+      mTouchHit = hit;
+      mTouchPressY = mTouchLastY = y;
+      mTouchMoved = false;
+      mTouchVel = 0.f;
+      OnMouseOver(x, y, mod); // press highlight, same as hovering
+      return;
+    }
+    ApplyHit(hit);
+  }
+
+  // Zone action: fires on press for the mouse, on tap-release for a finger.
+  void ApplyHit(const Hit& hit)
+  {
     switch (hit.zone)
     {
       case EZone::Factory:
@@ -273,22 +312,61 @@ public:
     (void)x;
     (void)dX;
     (void)dY;
-    (void)mod;
-    if (!mDraggingScrollbar)
+    if (mDraggingScrollbar)
+    {
+      const float contentH = ContentHeight();
+      IRECT track, thumb;
+      ScrollbarGeometry(contentH, track, thumb);
+      ScrollThumbTo(y, track, thumb.H(), contentH);
+      SetDirty(false);
       return;
-    const float contentH = ContentHeight();
-    IRECT track, thumb;
-    ScrollbarGeometry(contentH, track, thumb);
-    ScrollThumbTo(y, track, thumb.H(), contentH);
-    SetDirty(false);
+    }
+    // A finger slide past the slop scrolls the list 1:1 with the touch; the
+    // press it started is no longer a tap (OnMouseUp will not fire the zone).
+    if (mTouchID != 0 && mod.touchID == mTouchID)
+    {
+      if (!mTouchMoved && std::abs(y - mTouchPressY) > kTouchScrollSlop)
+        mTouchMoved = true;
+      if (mTouchMoved)
+      {
+        const float maxScroll = std::max(0.f, ContentHeight() - mRECT.H());
+        mScrollOffset = std::clamp(mScrollOffset - (y - mTouchLastY), 0.f, maxScroll);
+        mScrollTarget = mScrollOffset;
+        mTouchVel = 0.6f * mTouchVel + 0.4f * (y - mTouchLastY); // release fling velocity
+        mTouchLastY = y;
+        SetDirty(false);
+      }
+    }
   }
 
   void OnMouseUp(float x, float y, const IMouseMod& mod) override
   {
-    (void)x;
-    (void)y;
-    (void)mod;
     mDraggingScrollbar = false;
+    if (mTouchID != 0 && mod.touchID == mTouchID)
+    {
+      const Hit hit = mTouchHit;
+      const bool scrolled = mTouchMoved;
+      const float vel = mTouchVel;
+      mTouchID = 0;
+      mTouchHit = Hit();
+      mTouchMoved = false;
+      mTouchVel = 0.f;
+      if (scrolled)
+      {
+        // The finger was scrolling, not choosing: throw the list with the
+        // release velocity into the existing eased-scroll path.
+        const float maxScroll = std::max(0.f, ContentHeight() - mRECT.H());
+        mScrollTarget = std::clamp(mScrollOffset - vel * 12.f, 0.f, maxScroll);
+        if (mScrollTarget != mScrollOffset)
+          StartScrollAnim();
+        SetDirty(false);
+      }
+      else if (hit.zone != EZone::None)
+      {
+        ApplyHit(hit); // stayed put: the press was a tap after all
+      }
+      OnMouseOver(x, y, mod);
+    }
   }
 
   void OnMouseOver(float x, float y, const IMouseMod& mod) override
@@ -432,22 +510,6 @@ private:
     None,
     Factory,
     Custom
-  };
-  enum class EZone
-  {
-    None,
-    Factory,
-    CustomHeader,
-    CustomAdd,
-    CustomRow,
-    CustomEdit,
-    CustomDelete
-  };
-
-  struct Hit
-  {
-    EZone zone = EZone::None;
-    int idx = -1;
   };
 
   float ItemHeight() const
@@ -708,6 +770,14 @@ private:
   bool mDraggingScrollbar = false; // thumb drag in progress
   float mDragGrabDY = 0.f; // cursor offset within thumb at grab time
   volum::ui::SecondPressGate mSecondPress;
+  // iOS touch press bookkeeping: a press defers its zone action to release,
+  // and a drag past the slop turns into a list scroll instead. Mouse input
+  // never sets these, so desktop behaviour is unchanged.
+  ITouchID mTouchID = 0;
+  Hit mTouchHit;
+  float mTouchPressY = 0.f, mTouchLastY = 0.f, mTouchVel = 0.f;
+  bool mTouchMoved = false;
+  static constexpr float kTouchScrollSlop = 12.f;
   std::vector<std::string> mAmpNames;
   std::vector<std::string> mAmpAbbrs;
   SelectionCallback mCallback;

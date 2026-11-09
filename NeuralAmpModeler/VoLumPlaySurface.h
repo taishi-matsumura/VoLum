@@ -437,6 +437,12 @@ public:
         mArtDebugClock += std::clamp(dt, 0.f, volumart::kMaxMotionDt)
                           * (volumart::kClockRateFloor + (1.f - volumart::kClockRateFloor) * a);
     }
+    // iOS touch: a finger holding still on a rail row for a beat arms the
+    // drag-to-reorder. Until then its movement scrolls the list (OnMouseDrag),
+    // which is what a scroll gesture looks like to the fingers on the rail.
+    if (mTouchID != 0 && mTouchRow >= 0 && !mTouchScrolling && !mTouchArmed &&
+        now - mTouchPressTime >= kTouchLongPress)
+      mTouchArmed = true; // repaint (the frame's SetDirty below) shows the grab
     SetDirty(false);
   }
 
@@ -508,6 +514,14 @@ public:
       const int choice = PickerChoiceAt(x, y);
       if (choice >= 0 && choice < static_cast<int>(mChoices.size()) && mAssign)
       {
+        // A finger press on a picker row arms a tap instead of committing: grabbing
+        // the list with a press is exactly how a touch scrolls, so the row only
+        // fires on release (OnMouseUp) when the finger stayed put.
+        if (mod.IsTouch())
+        {
+          BeginTouchPress(mod.touchID, choice, -1, x, y);
+          return;
+        }
         mAssign(mEditSlot, mChoices[(size_t)choice]);
         mPickerOpen = false;
         SetDirty(false);
@@ -568,6 +582,10 @@ public:
         mPressGlyph = kPressAssign;
       else
         mPressGlyph = kPressBody;
+      // A finger press on a rail row is not yet a reorder: it is the start of a
+      // possible scroll. Reorder is armed later, by holding still (Tick).
+      if (mod.IsTouch())
+        BeginTouchPress(mod.touchID, -1, row, x, y);
       return;
     }
 
@@ -607,6 +625,44 @@ public:
         mPickerScroll = next;
       SetDirty(false);
     }
+    else if (mTouchChoice >= 0 && mPickerOpen)
+    {
+      // The picker list scrolls 1:1 with the finger once the press travels past
+      // the slop; the row it started on is no longer being aimed at.
+      if (!mTouchScrolling && std::abs(y - mPressY) > kTouchScrollSlop)
+      {
+        mTouchScrolling = true;
+        mHoverChoice = -1;
+      }
+      if (mTouchScrolling)
+      {
+        mPickerScroll = volum::scroll::ClampScroll(mPickerScroll - (y - mTouchLastY), PickerMaxScroll());
+        mTouchLastY = y;
+        SetDirty(false);
+      }
+    }
+    else if (mTouchRow >= 0 && !mTouchArmed)
+    {
+      // Finger drags on the rail scroll the list, they do not steal the row for
+      // a reorder. A hold past kTouchLongPress has already armed in Tick(); if
+      // idle ticks somehow missed the hold, arm here on the first slop-sized
+      // move instead.
+      if (!mTouchScrolling && (std::abs(x - mPressX) > kTouchScrollSlop || std::abs(y - mPressY) > kTouchScrollSlop))
+      {
+        if (std::chrono::steady_clock::now() - mTouchPressTime >= kTouchLongPress)
+          mTouchArmed = true;
+        else
+          mTouchScrolling = true;
+      }
+      if (mTouchScrolling)
+      {
+        mRailScroll = mRailScrollTarget = volum::scroll::ClampScroll(mRailScroll - (y - mTouchLastY), RailMaxScroll());
+        mTouchVel = 0.6f * mTouchVel + 0.4f * (y - mTouchLastY); // release fling velocity
+        mTouchLastY = y;
+        mHoverRow = -1;
+        SetDirty(false);
+      }
+    }
     else if (mPressRow >= 0 && !mPickerOpen)
     {
       if (!mDragging && (std::abs(x - mPressX) > 6.f || std::abs(y - mPressY) > 6.f))
@@ -635,6 +691,34 @@ public:
     mDragging = false;
     mDropRow = -1;
     mDropInsert = false;
+    // Resolve a touch press: scrolling throws the rail and picks nothing, a
+    // picker tap commits here (its down only armed the press), a rail tap
+    // falls through to the existing pressGlyph handling below.
+    const int touchChoice = mTouchChoice;
+    const bool touchScrolled = mTouchScrolling;
+    const float flickVel = mTouchVel;
+    EndTouchPress();
+    if (touchScrolled)
+    {
+      if (touchChoice < 0)
+      {
+        mRailScrollTarget = volum::scroll::ClampScroll(mRailScroll - flickVel * 12.f, RailMaxScroll());
+        if (mRailScrollTarget != mRailScroll)
+          StartRailScrollAnim();
+      }
+      SetDirty(false);
+      return;
+    }
+    if (touchChoice >= 0)
+    {
+      if (mPickerOpen && mAssign && PickerChoiceAt(x, y) == touchChoice)
+      {
+        mAssign(mEditSlot, mChoices[(size_t)touchChoice]);
+        mPickerOpen = false;
+      }
+      SetDirty(false);
+      return;
+    }
     if (pressRow < 0 || pressRow >= static_cast<int>(mSlots.size()))
       return;
     if (wasDrag)
@@ -722,6 +806,7 @@ public:
     mDragging = false;
     mDropRow = -1;
     mDropInsert = false;
+    EndTouchPress();
     ApplyPlayTip(0.f, 0.f, true);
     SetDirty(false);
   }
@@ -2002,6 +2087,39 @@ private:
   int mPressGlyph = kPressBody;
   float mPressX = 0.f, mPressY = 0.f, mDragX = 0.f, mDragY = 0.f;
   bool mDragging = false, mDropInsert = false;
+  // iOS touch gesture state. A finger press never fires a row on down: it
+  // becomes a list scroll (past the slop, handled in OnMouseDrag), a reorder
+  // drag (armed by a long press, armed in Tick), or a tap committed on release
+  // (OnMouseUp). Mouse input never sets these, so desktop behaviour is intact.
+  ITouchID mTouchID = 0;
+  int mTouchRow = -1, mTouchChoice = -1; // rail row / picker row armed by the finger
+  bool mTouchScrolling = false, mTouchArmed = false;
+  float mTouchLastY = 0.f, mTouchVel = 0.f; // last drag y, smoothed release velocity
+  std::chrono::steady_clock::time_point mTouchPressTime {};
+  static constexpr float kTouchScrollSlop = 10.f;       // px before a press becomes a scroll
+  static constexpr std::chrono::milliseconds kTouchLongPress{450}; // hold before reorder arms
+
+  // Touch press bookkeeping: down arms, drag or up resolves it.
+  void BeginTouchPress(ITouchID touchID, int choice, int row, float x, float y)
+  {
+    mTouchID = touchID;
+    mTouchChoice = choice;
+    mTouchRow = row;
+    mTouchScrolling = false;
+    mTouchArmed = false;
+    mTouchLastY = y;
+    mTouchVel = 0.f;
+    mPressX = x; // scroll-slop anchor; rail down already stored these, the picker did not
+    mPressY = y;
+    mTouchPressTime = std::chrono::steady_clock::now();
+  }
+  void EndTouchPress()
+  {
+    mTouchID = 0;
+    mTouchRow = mTouchChoice = -1;
+    mTouchScrolling = mTouchArmed = false;
+    mTouchVel = 0.f;
+  }
   volum::ui::SecondPressGate mSecondPress;
   bool mPressPickerOpen = false;
 };
