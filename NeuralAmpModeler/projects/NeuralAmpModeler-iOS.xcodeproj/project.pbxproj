@@ -82,7 +82,7 @@
 		4FDF6D7F2267CEBA0007B686 /* IPlugAUPlayer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4FDF6D7D2267CEBA0007B686 /* IPlugAUPlayer.mm */; };
 		4FE0DEE829A183B700DDBCC8 /* NeuralAmpModelerAU.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC6982F293BA47F0076EC33 /* NeuralAmpModelerAU.framework */; };
 		4FE0DEF029A2E0F100DDBCC8 /* IPlugAUViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4FFF105A20A0E57100D3092F /* IPlugAUViewController.mm */; settings = {COMPILER_FLAGS = "-fobjc-arc"; }; };
-		91236D811B08F59300734C5E /* NeuralAmpModelerAppExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 91236D771B08F59300734C5E /* NeuralAmpModelerAppExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		91236D811B08F59300734C5E /* VoLumAppExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 91236D771B08F59300734C5E /* VoLumAppExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AA341E2B2B9E5A650069C260 /* ToneStack.h in Headers */ = {isa = PBXBuildFile; fileRef = AA341E292B9E5A650069C260 /* ToneStack.h */; };
 		AA341E2C2B9E5A650069C260 /* ToneStack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA341E2A2B9E5A650069C260 /* ToneStack.cpp */; };
 		AA341E2D2B9E5A650069C260 /* ToneStack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA341E2A2B9E5A650069C260 /* ToneStack.cpp */; };
@@ -92,15 +92,15 @@
 		AA7C860D2B43A42F00B5FB3A /* wdltypes.h in Headers */ = {isa = PBXBuildFile; fileRef = AA7C86082B43A42E00B5FB3A /* wdltypes.h */; };
 		AA7C860E2B43A42F00B5FB3A /* ptrlist.h in Headers */ = {isa = PBXBuildFile; fileRef = AA7C86092B43A42E00B5FB3A /* ptrlist.h */; };
 		AA7C860F2B43A42F00B5FB3A /* heapbuf.h in Headers */ = {isa = PBXBuildFile; fileRef = AA7C860A2B43A42E00B5FB3A /* heapbuf.h */; };
-		AAB7BBB92CC4B8D6000B8B6E /* get_dsp.h in Headers */ = {isa = PBXBuildFile; fileRef = AAB7BBB82CC4B8D6000B8B6E /* get_dsp.h */; };
 		AA9000012B00000000000001 /* conv1d.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000001 /* conv1d.cpp */; };
 		AA9000012B00000000000002 /* Delay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000002 /* Delay.cpp */; };
 		AA9000012B00000000000003 /* Reverb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000003 /* Reverb.cpp */; };
 		AA9000012B00000000000004 /* VoLumHttpGet.mm in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000004 /* VoLumHttpGet.mm */; settings = {COMPILER_FLAGS = "-fobjc-arc"; }; };
 		AA9000012B00000000000005 /* ring_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000005 /* ring_buffer.cpp */; };
-		AA9000012B00000000000006 /* a2_fast.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000006 /* a2_fast.cpp */; };
-		AA9000012B00000000000007 /* model.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000007 /* model.cpp */; };
-		AA9000012B00000000000008 /* slimmable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000008 /* slimmable.cpp */; };
+		AA9000012B00000000000006 /* wavenet/a2_fast.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000006 /* wavenet/a2_fast.cpp */; };
+		AA9000012B00000000000007 /* wavenet/model.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000007 /* wavenet/model.cpp */; };
+		AA9000012B00000000000008 /* wavenet/slimmable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9100012B00000000000008 /* wavenet/slimmable.cpp */; };
+		AAB7BBB92CC4B8D6000B8B6E /* get_dsp.h in Headers */ = {isa = PBXBuildFile; fileRef = AAB7BBB82CC4B8D6000B8B6E /* get_dsp.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -145,7 +145,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				91236D811B08F59300734C5E /* NeuralAmpModelerAppExtension.appex in Embed App Extensions */,
+				91236D811B08F59300734C5E /* VoLumAppExtension.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -349,8 +349,8 @@
 		4FFF108420A1036200D3092F /* config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = config.h; path = ../config.h; sourceTree = "<group>"; };
 		4FFF108720A1036200D3092F /* NeuralAmpModeler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NeuralAmpModeler.cpp; path = ../NeuralAmpModeler.cpp; sourceTree = "<group>"; };
 		4FFF108820A1036200D3092F /* NeuralAmpModeler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NeuralAmpModeler.h; path = ../NeuralAmpModeler.h; sourceTree = "<group>"; };
-		91236D0D1B08F42B00734C5E /* NeuralAmpModeler.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NeuralAmpModeler.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		91236D771B08F59300734C5E /* NeuralAmpModelerAppExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NeuralAmpModelerAppExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		91236D0D1B08F42B00734C5E /* VoLum.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoLum.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		91236D771B08F59300734C5E /* VoLumAppExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VoLumAppExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA341E292B9E5A650069C260 /* ToneStack.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ToneStack.h; path = ../ToneStack.h; sourceTree = "<group>"; };
 		AA341E2A2B9E5A650069C260 /* ToneStack.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ToneStack.cpp; path = ../ToneStack.cpp; sourceTree = "<group>"; };
 		AA7C86042B43A42E00B5FB3A /* ResamplingContainer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResamplingContainer.h; sourceTree = "<group>"; };
@@ -358,15 +358,15 @@
 		AA7C86082B43A42E00B5FB3A /* wdltypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wdltypes.h; sourceTree = "<group>"; };
 		AA7C86092B43A42E00B5FB3A /* ptrlist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ptrlist.h; sourceTree = "<group>"; };
 		AA7C860A2B43A42E00B5FB3A /* heapbuf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = heapbuf.h; sourceTree = "<group>"; };
-		AAB7BBB82CC4B8D6000B8B6E /* get_dsp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = get_dsp.h; sourceTree = "<group>"; };
 		AA9100012B00000000000001 /* conv1d.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = conv1d.cpp; sourceTree = "<group>"; };
 		AA9100012B00000000000002 /* Delay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Delay.cpp; sourceTree = "<group>"; };
 		AA9100012B00000000000003 /* Reverb.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Reverb.cpp; sourceTree = "<group>"; };
 		AA9100012B00000000000004 /* VoLumHttpGet.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = VoLumHttpGet.mm; path = ../VoLumHttpGet.mm; sourceTree = "<group>"; };
 		AA9100012B00000000000005 /* ring_buffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ring_buffer.cpp; sourceTree = "<group>"; };
-		AA9100012B00000000000006 /* a2_fast.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wavenet/a2_fast.cpp; sourceTree = "<group>"; };
-		AA9100012B00000000000007 /* model.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wavenet/model.cpp; sourceTree = "<group>"; };
-		AA9100012B00000000000008 /* slimmable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wavenet/slimmable.cpp; sourceTree = "<group>"; };
+		AA9100012B00000000000006 /* wavenet/a2_fast.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wavenet/a2_fast.cpp; sourceTree = "<group>"; };
+		AA9100012B00000000000007 /* wavenet/model.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wavenet/model.cpp; sourceTree = "<group>"; };
+		AA9100012B00000000000008 /* wavenet/slimmable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wavenet/slimmable.cpp; sourceTree = "<group>"; };
+		AAB7BBB82CC4B8D6000B8B6E /* get_dsp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = get_dsp.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -686,9 +686,9 @@
 				4FBDC94029FFF143004FF203 /* version.h */,
 				4FBDC94529FFF143004FF203 /* wavenet.h */,
 				AA9100012B00000000000001 /* conv1d.cpp */,
-				AA9100012B00000000000006 /* a2_fast.cpp */,
-				AA9100012B00000000000007 /* model.cpp */,
-				AA9100012B00000000000008 /* slimmable.cpp */,
+				AA9100012B00000000000006 /* wavenet/a2_fast.cpp */,
+				AA9100012B00000000000007 /* wavenet/model.cpp */,
+				AA9100012B00000000000008 /* wavenet/slimmable.cpp */,
 				AA9100012B00000000000005 /* ring_buffer.cpp */,
 			);
 			name = NAM;
@@ -795,8 +795,8 @@
 		91D3DA171B023C1E008FFFBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				91236D0D1B08F42B00734C5E /* NeuralAmpModeler.app */,
-				91236D771B08F59300734C5E /* NeuralAmpModelerAppExtension.appex */,
+				91236D0D1B08F42B00734C5E /* VoLum.app */,
+				91236D771B08F59300734C5E /* VoLumAppExtension.appex */,
 				4FC6982F293BA47F0076EC33 /* NeuralAmpModelerAU.framework */,
 			);
 			name = Products;
@@ -911,7 +911,7 @@
 			);
 			name = App;
 			productName = "FilterDemoApp-iOS";
-			productReference = 91236D0D1B08F42B00734C5E /* NeuralAmpModeler.app */;
+			productReference = 91236D0D1B08F42B00734C5E /* VoLum.app */;
 			productType = "com.apple.product-type.application";
 		};
 		91236D761B08F59300734C5E /* AUv3 */ = {
@@ -928,7 +928,7 @@
 			);
 			name = AUv3;
 			productName = "FilterDemoAppExtension-iOS";
-			productReference = 91236D771B08F59300734C5E /* NeuralAmpModelerAppExtension.appex */;
+			productReference = 91236D771B08F59300734C5E /* VoLumAppExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -1094,9 +1094,9 @@
 				4FC69847293BA5F90076EC33 /* IPopupMenuControl.cpp in Sources */,
 				4FC6984E293BA61D0076EC33 /* NeuralAmpModeler.cpp in Sources */,
 				AA9000012B00000000000001 /* conv1d.cpp in Sources */,
-				AA9000012B00000000000006 /* a2_fast.cpp in Sources */,
-				AA9000012B00000000000007 /* model.cpp in Sources */,
-				AA9000012B00000000000008 /* slimmable.cpp in Sources */,
+				AA9000012B00000000000006 /* wavenet/a2_fast.cpp in Sources */,
+				AA9000012B00000000000007 /* wavenet/model.cpp in Sources */,
+				AA9000012B00000000000008 /* wavenet/slimmable.cpp in Sources */,
 				AA9000012B00000000000005 /* ring_buffer.cpp in Sources */,
 				AA9000012B00000000000002 /* Delay.cpp in Sources */,
 				AA9000012B00000000000003 /* Reverb.cpp in Sources */,
@@ -1310,7 +1310,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Lum.VoLum;
-				PRODUCT_NAME = NeuralAmpModeler;
+				PRODUCT_NAME = VoLum;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 4.2;
@@ -1360,7 +1360,7 @@
 				);
 				MTL_ENABLE_DEBUG_INFO = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Lum.VoLum;
-				PRODUCT_NAME = NeuralAmpModeler;
+				PRODUCT_NAME = VoLum;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1414,7 +1414,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Lum.VoLum.AUv3;
-				PRODUCT_NAME = NeuralAmpModelerAppExtension;
+				PRODUCT_NAME = VoLumAppExtension;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1463,7 +1463,7 @@
 				);
 				MTL_ENABLE_DEBUG_INFO = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Lum.VoLum.AUv3;
-				PRODUCT_NAME = NeuralAmpModelerAppExtension;
+				PRODUCT_NAME = VoLumAppExtension;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
