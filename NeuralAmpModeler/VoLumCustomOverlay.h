@@ -56,6 +56,23 @@ public:
     mIgnoreMouse = false;
     mEntryText = IText(14.f, VoLumColors::TEXT_BRIGHT, "Josefin-Bold", EAlign::Near, EVAlign::Middle, 0.f,
                        IColor(245, 14, 16, 22), VoLumColors::TEXT_BRIGHT);
+    LiveOverlay() = this; // the most recently built instance is the one pickers talk to
+  }
+
+  // iOS file pickers finish asynchronously, potentially after a UI rebuild (for
+  // a rotation) replaced this control. Their completion handlers reach the
+  // instance that exists now - or nobody, if none survived - instead of a
+  // dangling this pointer into a deleted control.
+  static VoLumCustomOverlayControl*& LiveOverlay()
+  {
+    static VoLumCustomOverlayControl* sLive = nullptr;
+    return sLive;
+  }
+
+  ~VoLumCustomOverlayControl() override
+  {
+    if (LiveOverlay() == this)
+      LiveOverlay() = nullptr;
   }
 
   // changedCb fires whenever a managed list is mutated so the host can re-sync
@@ -734,22 +751,49 @@ private:
     if (!ui)
       return;
     const char* ext = (mManageKind == ManageKind::IR) ? "wav" : "nam";
-    WDL_String path;
     std::vector<WDL_String> files;
     const auto harnessPaths = volum::SplitHarnessPaths(volum::HarnessEnv("VOLUM_IMPORT_OPEN_PATHS"));
     if (!harnessPaths.empty())
     {
       for (const auto& p : harnessPaths)
         files.emplace_back(p.c_str());
+      ImportChosenFiles(files);
+      return;
     }
-    else
-    {
-      // The macOS panel swallows the mouse-up, which would leave this press captured.
-      ui->ReleaseMouseCapture();
-      ui->PromptForFiles(path, files, ext); // multi-select; each entry is a full path
-    }
+#if defined OS_IOS
+    // iOS has no blocking multi-select: the base PromptForFiles would assert on
+    // its missing completion handler and abort the tap. The document picker
+    // reports through the handler instead - one file per tap, tap again for
+    // more. This control can be replaced (rotate) while the picker is front,
+    // so the handler resolves the live instance, never a dangling this.
+    WDL_String picked, dir;
+    ui->ReleaseMouseCapture();
+    ui->PromptForFile(picked, dir, EFileAction::Open, ext,
+                      [](const WDL_String& fileName, const WDL_String& /*path*/) {
+                        if (!fileName.GetLength())
+                          return; // cancelled
+                        VoLumCustomOverlayControl* live = LiveOverlay();
+                        if (!live)
+                          return; // the picker outlived this control
+                        std::vector<WDL_String> one;
+                        one.emplace_back(fileName.Get());
+                        live->ImportChosenFiles(one);
+                      });
+#else
+    WDL_String path;
+    // The macOS panel swallows the mouse-up, which would leave this press captured.
+    ui->ReleaseMouseCapture();
+    ui->PromptForFiles(path, files, ext); // multi-select; each entry is a full path
     if (files.empty())
       return;
+    ImportChosenFiles(files);
+#endif
+  }
+
+  // Copy each chosen file into the custom library and add its row. Desktop
+  // hands this the whole multi-select at once; iOS calls it with one picked file.
+  void ImportChosenFiles(std::vector<WDL_String>& files)
+  {
 
     // Each file's display name defaults to its filename (minus extension), cut in
     // the middle when long; the exact filename is stored alongside. A name already
@@ -1121,49 +1165,37 @@ private:
       auto* ui = GetUI();
       if (!ui)
         return;
+#if defined OS_IOS
+      // iOS has no blocking multi-select: the base PromptForFiles would assert on
+      // its missing completion handler and abort the tap. The document picker
+      // reports through the handler instead - one file per tap, tap again for
+      // more. This control can be replaced (rotate) while the picker is front,
+      // so the handler resolves the live instance, never a dangling this.
+      WDL_String picked, dir;
+      ui->ReleaseMouseCapture();
+      ui->PromptForFile(picked, dir, EFileAction::Open, "nam",
+                        [](const WDL_String& fileName, const WDL_String& /*path*/) {
+                          if (!fileName.GetLength())
+                            return; // cancelled
+                          VoLumCustomOverlayControl* live = LiveOverlay();
+                          if (!live)
+                            return; // the picker outlived this control
+                          live->AppendNamFiles({fileName.Get()});
+                        });
+#else
       WDL_String path;
       std::vector<WDL_String> files;
       // The macOS panel swallows the mouse-up, which would leave this press captured.
       ui->ReleaseMouseCapture();
       ui->PromptForFiles(path, files, "nam"); // multi-select .nam captures
-      int added = 0;
+      std::vector<std::string> paths;
       for (const auto& fn : files)
       {
-        if (!fn.GetLength())
-          continue;
-        std::string base = fn.Get();
-        const size_t slash = base.find_last_of("/\\");
-        if (slash != std::string::npos)
-          base = base.substr(slash + 1);
-        // Re-importing a file already in this amp's manifest is a no-op (matched
-        // by filename, case-insensitive) so the same capture never stacks up as
-        // duplicate rows - whether re-picked alone or within a multi-select batch.
-        if (volum::custom::ManifestHasFile(mBuilderAmp, base))
-          continue;
-        // Factory naming convention (PREFIX-CODE-CHANNEL.nam) auto-fills the cab
-        // slot, channel, and cab name; other names are added unassigned for
-        // manual mapping.
-        const auto parsed = volum::custom::ParseNamFileName(base);
-        const int slot = parsed.matched ? parsed.slot : volum::custom::kUnassignedSlot;
-        // ParseNamFileName already drops a last-token number outside 1..kMaxChannels
-        // (G65-2204 is a model code). Re-check so a draft row is never "assigned"
-        // to a channel the loader will ignore.
-        const int channel = volum::custom::ChannelAssigned(parsed.channel) ? parsed.channel : 0;
-        // Keep the absolute source path so Save can copy the capture into the
-        // VoLum-owned content library (F6 import). storedPath is filled on save.
-        volum::custom::CustomNamFile nf;
-        nf.file = base;
-        nf.slot = slot;
-        nf.channel = channel;
-        nf.sourcePath = fn.Get();
-        mBuilderAmp.files.push_back(nf);
-        if (parsed.matched && slot >= 0 && slot < volum::custom::kNumCabSlots && !parsed.cabName.empty())
-          mBuilderAmp.cabNames[(size_t)slot] = volum::custom::NormalizeCabName(parsed.cabName);
-        ++added;
+        if (fn.GetLength())
+          paths.emplace_back(fn.Get());
       }
-      if (added > 0)
-        mBuilderFileScroll = 1e9f; // jump to the newly appended rows (clamped in Draw)
-      SetDirty(false);
+      AppendNamFiles(paths);
+#endif
       return;
     }
     if (action >= kArtBase && action < kArtBase + kNumCustomArts)
@@ -1215,6 +1247,51 @@ private:
       OpenSpeakerPopup(action - kFileSpeakerBase, rect);
       return;
     }
+  }
+
+  // The picked .nam captures land on the builder draft: desktop multi-select
+  // feeds this immediately, iOS's picker through its completion handler, one
+  // file per tap. Filename de-dupe and the PREFIX-CODE-CHANNEL auto-fill are shared.
+  void AppendNamFiles(const std::vector<std::string>& paths)
+  {
+    int added = 0;
+    for (const auto& full : paths)
+    {
+      if (full.empty())
+        continue;
+      std::string base = full;
+      const size_t slash = base.find_last_of("/\\");
+      if (slash != std::string::npos)
+        base = base.substr(slash + 1);
+      // Re-importing a file already in this amp's manifest is a no-op (matched
+      // by filename, case-insensitive) so the same capture never stacks up as
+      // duplicate rows - whether re-picked alone or within a multi-select batch.
+      if (volum::custom::ManifestHasFile(mBuilderAmp, base))
+        continue;
+      // Factory naming convention (PREFIX-CODE-CHANNEL.nam) auto-fills the cab
+      // slot, channel, and cab name; other names are added unassigned for
+      // manual mapping.
+      const auto parsed = volum::custom::ParseNamFileName(base);
+      const int slot = parsed.matched ? parsed.slot : volum::custom::kUnassignedSlot;
+      // ParseNamFileName already drops a last-token number outside 1..kMaxChannels
+      // (G65-2204 is a model code). Re-check so a draft row is never "assigned"
+      // to a channel the loader will ignore.
+      const int channel = volum::custom::ChannelAssigned(parsed.channel) ? parsed.channel : 0;
+      // Keep the absolute source path so Save can copy the capture into the
+      // VoLum-owned content library (F6 import). storedPath is filled on save.
+      volum::custom::CustomNamFile nf;
+      nf.file = base;
+      nf.slot = slot;
+      nf.channel = channel;
+      nf.sourcePath = full;
+      mBuilderAmp.files.push_back(nf);
+      if (parsed.matched && slot >= 0 && slot < volum::custom::kNumCabSlots && !parsed.cabName.empty())
+        mBuilderAmp.cabNames[(size_t)slot] = volum::custom::NormalizeCabName(parsed.cabName);
+      ++added;
+    }
+    if (added > 0)
+      mBuilderFileScroll = 1e9f; // jump to the newly appended rows (clamped in Draw)
+    SetDirty(false);
   }
 
   /* ---------------- in-overlay popup (speaker / channel) ---------------- */
@@ -1467,7 +1544,9 @@ private:
     const IRECT inner = mPopupRect.GetPadded(-kIrPopupPad);
     const IRECT title(inner.L, inner.T, inner.R, inner.T + kIrPopupTitleH);
     g.DrawText(IText(12.f, VoLumColors::GOLD, "Josefin-Bold", EAlign::Near, EVAlign::Middle), "IR SHAPING", title);
-    g.DrawText(IText(9.f, VoLumColors::CREAM_DIM, "Josefin-Regular", EAlign::Far, EVAlign::Middle),
+    // "Josefin-Sans" is the regular face registered in _BuildVoLumLayout; there is
+    // no "Josefin-Regular" font, and asking NanoVG for an unloaded face asserts.
+    g.DrawText(IText(9.f, VoLumColors::CREAM_DIM, "Josefin-Sans", EAlign::Far, EVAlign::Middle),
                "click a value to type", title);
 
     DrawIrStepperRow(g, IrRowRect(inner, 0), "Level", FmtIrTrim(s.trimDb), kIrCfgTrimDown, kIrCfgTrimUp, kIrCfgTrimEdit,

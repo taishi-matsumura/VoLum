@@ -51,9 +51,18 @@ std::string NeuralAmpModeler::_VolumExportPack(const volum::pack::ExportSelectio
   else
   {
     fileName.Set(plan.job == volum::pack::Job::Everything ? "VoLum library.volumpack" : "VoLum pack.volumpack");
+#if defined OS_IOS
+    // The Pack flow has no async wiring on iOS yet: PromptForFile there never
+    // blocks, and a missing handler asserts. Hand the picker a no-op so the
+    // export reads as "cancelled" instead of aborting the app.
+    GetUI()->ReleaseMouseCapture();
+    GetUI()->PromptForFile(fileName, dir, EFileAction::Save, "volumpack",
+                           [](const WDL_String&, const WDL_String&) {});
+#else
     // The macOS panel swallows the mouse-up, which would leave this press captured.
     GetUI()->ReleaseMouseCapture();
     GetUI()->PromptForFile(fileName, dir, EFileAction::Save, "volumpack");
+#endif
   }
   if (fileName.GetLength() == 0)
     return {}; // cancelled: not a failure
@@ -84,9 +93,18 @@ volum::pack::PackContents NeuralAmpModeler::_VolumPickPack()
     fileName.Set(harnessPath.c_str());
   else
   {
+#if defined OS_IOS
+    // Same as the export above: no async Pack flow on iOS yet, and PromptForFile
+    // there needs a completion handler; without one it asserts. The picker opens
+    // and the pick is dropped, reading as cancelled instead of crashing.
+    GetUI()->ReleaseMouseCapture();
+    GetUI()->PromptForFile(fileName, dir, EFileAction::Open, "volumpack",
+                           [](const WDL_String&, const WDL_String&) {});
+#else
     // The macOS panel swallows the mouse-up, which would leave this press captured.
     GetUI()->ReleaseMouseCapture();
     GetUI()->PromptForFile(fileName, dir, EFileAction::Open, "volumpack");
+#endif
   }
   if (fileName.GetLength() == 0)
     return volum::pack::PackContents{}; // cancelled: empty error, so the modal closes quietly
