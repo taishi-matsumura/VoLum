@@ -24,6 +24,7 @@
 		4F10E7C020B17EDB00F5B09B /* VoLum-iOS-MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F10E7BF20B17EDB00F5B09B /* VoLum-iOS-MainInterface.storyboard */; };
 		4F1115CF2296DA95000CFCBF /* VoLum-iOS-MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F10E7BF20B17EDB00F5B09B /* VoLum-iOS-MainInterface.storyboard */; };
 		AA9200022C00000000000003 /* rigs in Resources */ = {isa = PBXBuildFile; fileRef = AA9200022C00000000000002 /* rigs */; };
+		AA9300012C00000000000002 /* container.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA9300012C00000000000001 /* container.cpp */; };
 		4F3E0F6A20A0BCD900A9C2BE /* NeuralAmpModeler-iOS.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F3E0F6720A0BC5B00A9C2BE /* NeuralAmpModeler-iOS.storyboard */; };
 		4F3E0F6B20A0BCE300A9C2BE /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F3E0F6820A0BCAF00A9C2BE /* Images.xcassets */; };
 		4F4856842773BD77005BCF8E /* NeuralAmpModelerAUv3Appex.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F4856832773BD77005BCF8E /* NeuralAmpModelerAUv3Appex.m */; };
@@ -156,6 +157,7 @@
 /* Begin PBXFileReference section */
 		4F10E7BF20B17EDB00F5B09B /* VoLum-iOS-MainInterface.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = "VoLum-iOS-MainInterface.storyboard"; path = "../resources/VoLum-iOS-MainInterface.storyboard"; sourceTree = "<group>"; };
 		AA9200022C00000000000002 /* rigs */ = {isa = PBXFileReference; lastKnownFileType = folder; name = rigs; path = ../../rigs; sourceTree = "<group>"; };
+		AA9300012C00000000000001 /* container.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = container.cpp; sourceTree = "<group>"; };
 		4F10E7C520B189DD00F5B09B /* NeuralAmpModeler-iOS.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "NeuralAmpModeler-iOS.entitlements"; sourceTree = "<group>"; };
 		4F2020F620A1B2B500F22200 /* scripts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = scripts; path = ../scripts; sourceTree = "<group>"; };
 		4F2602DB2269F79200C7E97E /* tex */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tex; path = ../resources/tex; sourceTree = "<group>"; };
@@ -689,6 +691,7 @@
 				4FBDC94029FFF143004FF203 /* version.h */,
 				4FBDC94529FFF143004FF203 /* wavenet.h */,
 				AA9100012B00000000000001 /* conv1d.cpp */,
+				AA9300012C00000000000001 /* container.cpp */,
 				AA9100012B00000000000006 /* wavenet/a2_fast.cpp */,
 				AA9100012B00000000000007 /* wavenet/model.cpp */,
 				AA9100012B00000000000008 /* wavenet/slimmable.cpp */,
@@ -1121,6 +1124,7 @@
 				AA9000012B00000000000007 /* wavenet/model.cpp in Sources */,
 				AA9000012B00000000000008 /* wavenet/slimmable.cpp in Sources */,
 				AA9000012B00000000000005 /* ring_buffer.cpp in Sources */,
+				AA9300012C00000000000002 /* container.cpp in Sources */,
 				AA9000012B00000000000002 /* Delay.cpp in Sources */,
 				AA9000012B00000000000003 /* Reverb.cpp in Sources */,
 				AA9000012B00000000000004 /* VoLumHttpGet.mm in Sources */,
