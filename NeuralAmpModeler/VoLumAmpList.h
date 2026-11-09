@@ -51,6 +51,7 @@ public:
     mCustomNames = names;
     mCustomArts = arts;
     mCustomArts.resize(mCustomNames.size(), 0); // keep lockstep even if arts omitted
+    mRevealCustom = -1; // row indexes may have shifted; retire any revealed row
     SetDirty(false);
   }
 
@@ -250,8 +251,17 @@ public:
     // (OnMouseUp) only if the finger stayed put; drag scrolls the list instead.
     if (mod.IsTouch())
     {
+      // Two-step touch: pen/bin act only on a row that shows them, which on
+      // touch means the row revealed by a re-tap (mRevealCustom). A tap on
+      // their invisible spot degrades to a row tap, which selects or reveals.
+      Hit armed = hit;
+      if ((armed.zone == EZone::CustomEdit || armed.zone == EZone::CustomDelete) && armed.idx != mRevealCustom)
+        armed = {EZone::CustomRow, armed.idx};
+      mTouchWasSelected = armed.zone == EZone::CustomRow && armed.idx >= 0 && armed.idx == mCustomSelected;
+      if (mRevealCustom != -1 && armed.idx != mRevealCustom)
+        mRevealCustom = -1; // press a different row or blank: the pair steps aside right away
       mTouchID = mod.touchID;
-      mTouchHit = hit;
+      mTouchHit = armed;
       mTouchPressY = mTouchLastY = y;
       mTouchMoved = false;
       mTouchVel = 0.f;
@@ -269,20 +279,24 @@ public:
       case EZone::Factory:
         mSelected = hit.idx;
         mCustomSelected = -1;
+        mRevealCustom = -1;
         if (mCallback)
           mCallback(hit.idx);
         ScrollToRevealFactory(hit.idx);
         SetDirty(false);
         break;
       case EZone::CustomAdd:
+        mRevealCustom = -1;
         if (mCustomAddCb)
           mCustomAddCb();
         break;
       case EZone::CustomEdit:
+        mRevealCustom = -1; // the row acted: its affordances step aside
         if (mCustomEditCb)
           mCustomEditCb(hit.idx);
         break;
       case EZone::CustomDelete:
+        mRevealCustom = -1;
         if (mCustomDeleteCb)
           mCustomDeleteCb(hit.idx);
         break;
@@ -363,6 +377,16 @@ public:
       }
       else if (hit.zone != EZone::None)
       {
+        // Two-step touch on a row body: selecting never reveals pen/bin;
+        // re-tapping the already-selected row reveals them, and re-tapping a
+        // revealed row hides them again (iOS chrome, same as the PLAY rail).
+        if (hit.zone == EZone::CustomRow)
+        {
+          if (mRevealCustom == hit.idx)
+            mRevealCustom = -1;
+          else
+            mRevealCustom = mTouchWasSelected ? hit.idx : -1;
+        }
         ApplyHit(hit); // stayed put: the press was a tap after all
       }
       OnMouseOver(x, y, mod);
@@ -371,6 +395,10 @@ public:
 
   void OnMouseOver(float x, float y, const IMouseMod& mod) override
   {
+    // A finger press routes through here for the press highlight, but a touch
+    // hover must not reveal pen/bin: on touch only the selected row shows them
+    // (two-step touch). Only a real mouse hover sets the hover reveal.
+    mHoverFromTouch = mod.IsTouch();
     (void)mod;
     const Hit hit = HitTest(x, y);
     int idx = -1;
@@ -668,6 +696,10 @@ private:
 
       const bool selected = (c == mCustomSelected);
       const bool hovered = (mHoveredDomain == EDomain::Custom && c == mHovered);
+      // Glyphs show on mouse hover or (desktop) selection; on touch only the
+      // row revealed by a re-tap shows them. A touch press highlight alone is
+      // not enough, otherwise scrolling past a row paints pen/bin on it.
+      const bool glyphs = (c == mRevealCustom) || ((hovered || selected) && !mHoverFromTouch);
       if (selected)
       {
         g.FillRoundRect(VoLumColors::ITEM_SEL_BG, paddedRow, 4.f);
@@ -692,7 +724,7 @@ private:
       // Clip the name so a long custom-amp name can never reach the pen/trash.
       // Same optical-center nudge as the factory rows (see kLabelVNudge).
       IRECT nameArea = paddedRow.GetReducedFromLeft(38.f)
-                         .GetReducedFromRight(hovered || selected ? 48.f : 6.f)
+                         .GetReducedFromRight(glyphs ? 48.f : 6.f)
                          .GetVShifted(kLabelVNudge);
       g.PathClipRegion(nameArea);
       g.DrawText(IText(13.f, selected ? VoLumColors::TEXT_BRIGHT : VoLumColors::TEXT_MED, "Josefin-Bold", EAlign::Near,
@@ -700,7 +732,7 @@ private:
                  mCustomNames[c].c_str(), nameArea);
       g.PathClipRegion(mRECT); // restore the list clip for the next rows/scrollbar
 
-      if (hovered || selected)
+      if (glyphs)
       {
         const IRECT bin(paddedRow.R - 22.f, paddedRow.T, paddedRow.R - 2.f, paddedRow.B);
         const IRECT pen(bin.L - 22.f, paddedRow.T, bin.L - 2.f, paddedRow.B);
@@ -764,6 +796,11 @@ private:
   int mHovered = -1;
   EDomain mHoveredDomain = EDomain::None;
   EZone mHoveredZone = EZone::None; // exact zone under the cursor (for pen/trash icon highlight)
+  bool mHoverFromTouch = false; // last hover came from a finger, not a mouse pointer
+  // Two-step touch: the custom row whose pen/bin a re-tap revealed (-1 = none).
+  // Only touch sets it; desktop hover/selection display is untouched.
+  int mRevealCustom = -1;
+  bool mTouchWasSelected = false; // the tapped row was selected before this press
   std::string mCurTip; // last tooltip pushed via SetTooltip (de-dupe)
   float mScrollOffset = 0.f;
   float mScrollTarget = 0.f;

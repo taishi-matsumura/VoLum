@@ -343,6 +343,7 @@ public:
     const int prevPressRow = mPressRow, prevPressSlot = mPressSlot, prevDropRow = mDropRow;
     const bool prevDragging = mDragging;
     bool changed = AssignIfChanged(mSlots, std::move(slots));
+    const bool slotsMoved = changed;
     changed |= AssignIfChanged(mChoices, std::move(choices));
     changed |= AssignIfChanged(mActiveAmpId, activeAmpId);
     changed |= AssignIfChanged(mActivePresetId, activePresetId);
@@ -387,6 +388,8 @@ public:
                || mPressSlot != prevPressSlot || mDropRow != prevDropRow || mDragging != prevDragging;
     if (changed)
       SetDirty(false);
+    if (slotsMoved)
+      mRevealRow = -1; // slot list moved: the revealed index no longer means the same row
   }
 
   void OnRescale() override
@@ -573,6 +576,7 @@ public:
       const auto& slot = mSlots[(size_t)row];
       mPressRow = row;
       mPressSlot = slot.slot;
+      mPressWasActive = (row == ActiveRow());
       mPressX = x;
       mPressY = y;
       mDragging = false;
@@ -582,12 +586,25 @@ public:
         mPressGlyph = kPressAssign;
       else
         mPressGlyph = kPressBody;
-      // A finger press on a rail row is not yet a reorder: it is the start of a
-      // possible scroll. Reorder is armed later, by holding still (Tick).
+      // Two-step touch: pen/x act only on a row that already shows them. A
+      // press that lands on a hidden glyph counts as a body tap, never as
+      // clear/assign; the reveal itself happens on tap release (OnMouseUp), so
+      // grabbing the rail to scroll never paints one.
       if (mod.IsTouch())
+      {
+        if (mRevealRow != row && mPressGlyph != kPressBody)
+          mPressGlyph = kPressBody;
+        if (mRevealRow != row)
+          mRevealRow = -1; // pressing another row (or grabbing it to scroll) steps the pair aside
+        // A finger press on a rail row is not yet a reorder: it is the start of a
+        // possible scroll. Reorder is armed later, by holding still (Tick).
         BeginTouchPress(mod.touchID, -1, row, x, y);
+      }
       return;
     }
+
+    if (mod.IsTouch())
+      mRevealRow = -1; // a touch outside the rail retires the revealed row
 
     for (int i = 0; i < FxCount; ++i)
     {
@@ -677,7 +694,7 @@ public:
     }
   }
 
-  void OnMouseUp(float x, float y, const IMouseMod&) override
+  void OnMouseUp(float x, float y, const IMouseMod& mod) override
   {
     mRailBar.OnUp();
     mPickerBar.OnUp();
@@ -724,15 +741,27 @@ public:
     if (wasDrag)
     {
       CommitRailDrop(pressSlot, x, y);
+      mRevealRow = -1; // the row at that index now holds different content
       SetDirty(false);
       return;
     }
     if (SlotAt(x, y) != pressRow)
       return;
+    // Two-step touch: selecting a row never shows pen/x. Re-tapping the already
+    // selected row toggles the fingertip-sized reveal; tapping a revealed row's
+    // body hides it again. Glyph taps below retire the reveal when they act.
+    if (mod.IsTouch() && pressGlyph == kPressBody)
+    {
+      if (mRevealRow == pressRow)
+        mRevealRow = -1;
+      else
+        mRevealRow = mPressWasActive ? pressRow : -1;
+    }
     if (pressGlyph == kPressClear && ClearRectForRow(pressRow).Contains(x, y))
     {
       if (mClear)
         mClear(mSlots[(size_t)pressRow].slot);
+      mRevealRow = -1;
       return;
     }
     if (pressGlyph == kPressAssign && AssignRectForRow(pressRow).Contains(x, y))
@@ -772,6 +801,11 @@ public:
 
   void OnMouseOver(float x, float y, const IMouseMod&) override
   {
+    if (mRevealRow >= 0)
+    {
+      mRevealRow = -1; // a hovering mouse owns the affordances again
+      SetDirty(false);
+    }
     const int row = mPickerOpen ? -1 : SlotAt(x, y);
     int fx = -1;
     if (!mPickerOpen)
@@ -890,6 +924,7 @@ private:
   {
     if (slot < 0 || mChoices.empty())
       return;
+    mRevealRow = -1; // the picker owns the row; its affordances step aside
     mEditSlot = slot;
     mSlotEditable = numberEditable;
     mPickerOpen = true;
@@ -1408,6 +1443,10 @@ private:
     const auto& slot = mSlots[(size_t)index];
     const bool active = index == ActiveRow();
     const bool hovered = mHoverRow == index;
+    // A touch device never reports hover, so pen/x arrive in two steps: the
+    // first tap reveals (mRevealRow), and revealed boxes grow fingertip-sized.
+    const bool revealed = mRevealRow == index;
+    const bool affordance = hovered || revealed;
     g.FillRect(slot.valid ? VoLumColors::WELL_DARK : IColor(235, 26, 12, 15), row);
     DrawVoLumSelection(g, row, active, hovered && !active, VoLumSelectionStyle::Brass, 2.f, 0.f);
     if (!active)
@@ -1449,7 +1488,7 @@ private:
       clipped(IRECT(textL, row.T + 23.f, row.R - 8.f, row.T + 43.f),
               VoLumType::Display(17.f, active ? VoLumColors::SEL_TEXT : VoLumColors::CREAM, EAlign::Near),
               slot.sound.presetName.c_str(), rowText.name);
-      const float ampR = hovered ? row.R - 52.f : row.R - 8.f;
+      const float ampR = hovered ? row.R - 52.f : revealed ? row.R - 57.f : row.R - 8.f;
       clipped(IRECT(textL, row.T + 43.f, ampR, row.T + 57.f),
               VoLumType::Label(9.f, VoLumColors::TEAL_DIM, EAlign::Near), slot.sound.ampName.c_str(), rowText.amp);
       // LIVE stays in the top-right even while the pointer is on the row.
@@ -1477,7 +1516,7 @@ private:
     // sidebar's custom rows use. Reassign has to be *visible*: shipping the picker
     // behind a double-click only meant nothing advertised that a row could be
     // pointed at a different Sound without deleting it first.
-    if (hovered)
+    if (affordance)
     {
       const IRECT assign = AssignRectForRow(index, row);
       g.FillRoundRect(VoLumColors::SEL_BG_SOFT, assign, 2.f);
@@ -1692,8 +1731,12 @@ private:
   }
   // Lower-right, not top-right: LIVE keeps the top corner while the pointer is
   // on the row, so clear cannot appear under where the badge just was.
-  IRECT ClearRectForRow(int, const IRECT& row) const
+  IRECT ClearRectForRow(int index, const IRECT& row) const
   {
+    // A row revealed by a finger tap gets a fingertip-sized box; a mouse hover
+    // keeps the original small target, so desktop pixels stay exactly as drawn.
+    if (index == mRevealRow)
+      return IRECT(row.R - 27.f, row.B - 24.f, row.R - 3.f, row.B - 4.f);
     return IRECT(row.R - 26.f, row.B - 23.f, row.R - 6.f, row.B - 5.f);
   }
   IRECT AssignRectForRow(int index) const
@@ -1702,8 +1745,10 @@ private:
       return IRECT();
     return AssignRectForRow(index, RailRowRect(index));
   }
-  IRECT AssignRectForRow(int, const IRECT& row) const
+  IRECT AssignRectForRow(int index, const IRECT& row) const
   {
+    if (index == mRevealRow)
+      return IRECT(row.R - 53.f, row.B - 24.f, row.R - 29.f, row.B - 4.f);
     return IRECT(row.R - 48.f, row.B - 23.f, row.R - 28.f, row.B - 5.f);
   }
   IRECT FxRect(int i) const
@@ -2085,6 +2130,12 @@ private:
   static constexpr int kPressAssign = 2;
   int mPressRow = -1, mPressSlot = -1, mDropRow = -1;
   int mPressGlyph = kPressBody;
+  // Two-step touch reveal: -1 until a body tap lands on the already-selected
+  // row, which draws its pen/x at fingertip size; tapping that row's body again
+  // hides them, and acting on a glyph retires them. Mouse input never sets
+  // this, so desktop keeps hover-only display.
+  int mRevealRow = -1;
+  bool mPressWasActive = false; // the pressed row was LIVE before this press
   float mPressX = 0.f, mPressY = 0.f, mDragX = 0.f, mDragY = 0.f;
   bool mDragging = false, mDropInsert = false;
   // iOS touch gesture state. A finger press never fires a row on down: it
