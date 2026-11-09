@@ -901,6 +901,7 @@
 				91236D0B1B08F42B00734C5E /* Resources */,
 				91236D6F1B08F52E00734C5E /* Embed Frameworks */,
 				91236D851B08F59300734C5E /* Embed App Extensions */,
+				AA9200012C00000000000001 /* Run Script - legacy UIKit SDK version */,
 			);
 			buildRules = (
 			);
@@ -1026,6 +1027,24 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		AA9200012C00000000000001 /* Run Script - legacy UIKit SDK version */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Run Script - legacy UIKit SDK version";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# iPadOS 26+ SIGTRAPs (UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption)\n# apps linked against SDK >= 26 without UIScene adoption. iPlug2 still uses the\n# classic app delegate window path, so rewrite the main executable's\n# LC_BUILD_VERSION SDK to 18.7 to keep that path on device. Dev/sideload only.\nBIN=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/${EXECUTABLE_NAME}\"\nif [ -f \"${BIN}\" ]; then\n  xcrun vtool -set-build-version ios \"${IPHONEOS_DEPLOYMENT_TARGET}\" 18.7 -replace -output \"${BIN}.legacy\" \"${BIN}\" && mv \"${BIN}.legacy\" \"${BIN}\"\nfi\n";
+		};
 		4F33163621C53DD500612805 /* Run Script - prepare_resources-ios.py */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
