@@ -1,6 +1,7 @@
 [submodule "iPlug2"]
 	path = iPlug2
-	url = https://github.com/guitarlum/iPlug2.git
+	url = https://github.com/taishi-matsumura/iPlug2.git
+	branch = volum/ios-fit-scale
 [submodule "eigen"]
 	path = eigen
 	url = https://gitlab.com/libeigen/eigen.git
