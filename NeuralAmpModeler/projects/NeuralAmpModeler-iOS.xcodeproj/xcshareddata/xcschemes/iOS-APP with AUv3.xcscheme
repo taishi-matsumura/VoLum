@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "91236D0C1B08F42B00734C5E"
-               BuildableName = "NeuralAmpModeler.app"
+               BuildableName = "VoLum.app"
                BlueprintName = "App"
                ReferencedContainer = "container:NeuralAmpModeler-iOS.xcodeproj">
             </BuildableReference>
@@ -31,7 +31,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "91236D0C1B08F42B00734C5E"
-            BuildableName = "NeuralAmpModeler.app"
+            BuildableName = "VoLum.app"
             BlueprintName = "App"
             ReferencedContainer = "container:NeuralAmpModeler-iOS.xcodeproj">
          </BuildableReference>
@@ -56,11 +56,14 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "91236D0C1B08F42B00734C5E"
-            BuildableName = "NeuralAmpModeler.app"
+            BuildableName = "VoLum.app"
             BlueprintName = "App"
             ReferencedContainer = "container:NeuralAmpModeler-iOS.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <MetalAPIValidationSettings
+         isEnabled = "No">
+      </MetalAPIValidationSettings>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -73,7 +76,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "91236D0C1B08F42B00734C5E"
-            BuildableName = "NeuralAmpModeler.app"
+            BuildableName = "VoLum.app"
             BlueprintName = "App"
             ReferencedContainer = "container:NeuralAmpModeler-iOS.xcodeproj">
          </BuildableReference>
