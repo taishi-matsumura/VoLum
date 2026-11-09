@@ -132,7 +132,7 @@ def main():
             auv3["NSExtension"]["NSExtensionAttributes"]["AudioComponents"][0][
                 "factoryFunction"
             ] = "IPlugAUViewController_vNeuralAmpModeler"
-            auv3["NSExtension"]["NSExtensionMainStoryboard"] = "NeuralAmpModeler-iOS-MainInterface"
+            auv3["NSExtension"]["NSExtensionMainStoryboard"] = config["PLUG_NAME"] + "-iOS-MainInterface"
         else:
             auv3["NSExtension"][
                 "NSExtensionPrincipalClass"
