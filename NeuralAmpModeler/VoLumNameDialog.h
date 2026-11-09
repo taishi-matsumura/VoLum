@@ -149,10 +149,16 @@ public:
     const std::string confirm = ConfirmText();
     DrawBtn(g, CancelRect(), "Cancel", false);
     DrawBtn(g, SaveRect(), confirm.c_str(), true);
+#if defined OS_IOS
+    // No Enter or Esc under touch: the keyboard alert's OK commits (see
+    // OnTextEntryCompletion). Save stays live for the Connect-Keys path.
+    const std::string hint = "Type on the keyboard, then tap OK";
+#else
     std::string verb = confirm;
     for (auto& c : verb)
       c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     const std::string hint = "Enter to " + verb + "  \xC2\xB7  Esc to cancel";
+#endif
     g.DrawText(IText(9.f, VoLumColors::TEXT_DIM, "Josefin-Sans", EAlign::Center, EVAlign::Middle), hint.c_str(),
                box.GetPadded(-12.f).GetFromBottom(11.f));
   }
@@ -206,12 +212,17 @@ public:
 
   void OnMouseUp(float, float, const IMouseMod&) override { mSelecting = false; }
 
-  // The dialog never opens a text entry of its own; this only matters if some
+  // Desktop never opens a text entry of its own; this only matters if some
   // other path ever does. A completion carries text, not intent: draft only.
+  // On iOS the completion is the keyboard alert's OK - Cancel never calls back -
+  // so intent IS explicit there, and OK means the same as this box's confirm.
   void OnTextEntryCompletion(const char* str, int) override
   {
     volum::name_dialog::ApplyTextEntryCompletion(mModel, str);
     Touch();
+#if defined OS_IOS
+    Commit();
+#endif
   }
 
 private:
@@ -272,6 +283,9 @@ private:
       mScrim->SetDirty(false);
     }
     Touch();
+#if defined OS_IOS
+    OpenPlatformTextEntry(); // summon the system keyboard right away
+#endif
   }
 
   void Close()
@@ -294,12 +308,19 @@ private:
     }
     if (FieldRect().Contains(x, y))
     {
+#if defined OS_IOS
+      // The field itself cannot take typing; tapping it re-opens the keyboard
+      // alert (dismissed by its Cancel or by tapping outside it).
+      OpenPlatformTextEntry();
+      return;
+#else
       const double now = NowMs();
       const int clicks = volum::name_dialog::RegisterClick(mClicks, now, x, y, osDoubleClick);
       volum::name_dialog::PointerDown(mModel, CaretForX(x), clicks, mod.S);
       mSelecting = true;
       Touch();
       return;
+#endif
     }
     if (CancelRect().Contains(x, y) || !BoxRect().Contains(x, y))
     {
@@ -368,6 +389,24 @@ private:
         if (auto* textEntry = ui->GetTextEntryControl())
           textEntry->DismissEdit();
   }
+
+#if defined OS_IOS
+  // UIKit only types into a UITextField, so the dialog keeps its look and its
+  // decisions but lets the platform text entry (IGraphicsIOS_view.mm's alert,
+  // which does summon the system keyboard) collect the characters. It is seeded
+  // with the current draft, and its max length enforces this model's cap. The
+  // result arrives through OnTextEntryCompletion - OK only, never Cancel.
+  void OpenPlatformTextEntry()
+  {
+    auto* ui = GetUI();
+    if (!ui)
+      return;
+    SetTextEntryLength(static_cast<int>(mModel.maxLen));
+    // kNoValIdx: this control owns no parameter, and a valIdx would route the
+    // string through parameter conversion instead of OnTextEntryCompletion.
+    ui->CreateTextEntry(*this, FieldText(), FieldRect(), mModel.draft.c_str(), kNoValIdx);
+  }
+#endif
 
   void CopySelection()
   {

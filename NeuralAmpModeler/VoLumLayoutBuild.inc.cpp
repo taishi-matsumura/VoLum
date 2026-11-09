@@ -13,7 +13,14 @@ void NeuralAmpModeler::_BuildVoLumLayout(IGraphics* pGraphics)
   // window is intentionally a fixed, non-sizable frame (see main.rc), so there
   // is no native edge-resize and therefore no off-aspect letterbox/white-frame.
   pGraphics->AttachCornerResizer(EUIResizerMode::Scale, false);
+#if !defined OS_IOS
+  // The in-app text editor takes its characters from key events, and iOS never
+  // delivers any: UIKit routes typing to the focused UITextField only. Attaching
+  // it there produced fields that showed a caret but no software keyboard. Left
+  // off, IGraphics::CreateTextEntry routes to the platform text entry
+  // (IGraphicsIOS_view.mm's alert, which does summon the system keyboard).
   pGraphics->AttachTextEntryControl();
+#endif
   pGraphics->EnableMouseOver(true);
   pGraphics->EnableTooltips(true);
   pGraphics->EnableMultiTouch(true);

@@ -33,6 +33,26 @@ std::string ReadText(const std::filesystem::path& path)
   REQUIRE(in);
   return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
 }
+
+// Drops the iOS-only lane of `#if defined OS_IOS ... [#else ...] #endif`, keeping
+// the #else branch, so desktop-purity source pins read what the desktop build
+// compiles. iOS lanes are pinned separately (see the name dialog keyboard test).
+std::string WithoutIosLanes(const std::string& src)
+{
+  std::string out = src;
+  for (;;)
+  {
+    const auto start = out.find("#if defined OS_IOS");
+    if (start == std::string::npos)
+      break;
+    const auto elseAt = out.find("#else", start);
+    const auto end = out.find("#endif", start);
+    REQUIRE(end != std::string::npos);
+    const auto cutEnd = (elseAt != std::string::npos && elseAt < end) ? elseAt + 5 : end + 6;
+    out.erase(start, cutEnd - start);
+  }
+  return out;
+}
 } // namespace
 
 TEST_CASE("Empty preset id is Save As, not overwrite")
@@ -666,21 +686,26 @@ TEST_CASE("H peels Pack before it closes Settings")
   CHECK(volum::keyboard::TopOverlay(settingsOnly) == volum::keyboard::OverlayId::Settings);
 }
 
-TEST_CASE("Name dialog is a view over the model: only Enter and Save commit")
+TEST_CASE("Name dialog is a view over the model: only Enter and Save commit on desktop")
 {
   // The decisions live in VoLumNameDialogModel.h (test_volum_name_dialog.cpp).
-  // These pins keep the control from growing its own again.
+  // These pins keep the control from growing its own again - on the DESKTOP
+  // lane. iOS is the exception (pinned by the next test): UIKit gives an
+  // IGRAPHICS_VIEW no key events at all, so the characters must flow through
+  // the platform alert, whose own OK/Cancel carries the intent the desktop
+  // in-app editor would have swallowed.
   CHECK(volum::custom::NormalizePresetName("  Lead  ") == "Lead");
   const std::string dialog = ReadText(RepoRoot() / "NeuralAmpModeler" / "VoLumNameDialog.h");
   const auto complete = dialog.find("void OnTextEntryCompletion");
   REQUIRE(complete != std::string::npos);
   const auto completeEnd = dialog.find("\n  }", complete);
   REQUIRE(completeEnd != std::string::npos);
-  const std::string completion = dialog.substr(complete, completeEnd - complete);
+  const std::string completion = WithoutIosLanes(dialog.substr(complete, completeEnd - complete));
   CHECK(completion.find("ApplyTextEntryCompletion") != std::string::npos);
   CHECK(completion.find("Commit") == std::string::npos);
-  // No iPlug text entry: it reports only on completion and eats the Cancel click.
-  CHECK(dialog.find("->CreateTextEntry(") == std::string::npos);
+  // No in-app text entry on desktop: it reports only on completion and eats the
+  // Cancel click.
+  CHECK(WithoutIosLanes(dialog).find("->CreateTextEntry(") == std::string::npos);
   CHECK(dialog.find("volum::name_dialog::LabelText(label)") != std::string::npos);
   CHECK(dialog.find("std::move(mOnSave)") != std::string::npos);
 
@@ -701,6 +726,39 @@ TEST_CASE("Name dialog is a view over the model: only Enter and Save commit")
   REQUIRE(route != std::string::npos);
   CHECK(layout.substr(route, 200).find("dlg->OnKeyDown(0.f, 0.f, key);") != std::string::npos);
   CHECK(layout.find("mVolumUiMode == volum::UiMode::Play && !nameDialogOpen") != std::string::npos);
+}
+
+TEST_CASE("iOS name entry rides the platform keyboard, not the in-app editor")
+{
+  // UIKit routes typing to the focused UITextField only; an IGRAPHICS_VIEW
+  // receives no key events without one. Attaching the in-app ITextEntryControl
+  // on iOS therefore produced name fields with a caret and no software
+  // keyboard, which in the custom-amp builder also locked Save behind
+  // "Name your amp" forever. The dialog keeps its look and decisions; iOS
+  // drives IGraphicsIOS_view.mm's alert (a UITextField plus keyboard) whose
+  // OK is the only completion, never Cancel.
+  const std::string layout = ReadText(RepoRoot() / "NeuralAmpModeler" / "VoLumLayoutBuild.inc.cpp");
+  const auto attach = layout.find("pGraphics->AttachTextEntryControl();");
+  REQUIRE(attach != std::string::npos);
+  const auto guard = layout.rfind("#if !defined OS_IOS", attach);
+  REQUIRE(guard != std::string::npos);
+  CHECK(attach - guard < 600); // the guard sits just above the call, not pages back
+  CHECK(layout.substr(attach, 100).find("#endif") != std::string::npos); // and closes right after
+
+  const std::string dialog = ReadText(RepoRoot() / "NeuralAmpModeler" / "VoLumNameDialog.h");
+  CHECK(WithoutIosLanes(dialog).find("#if defined OS_IOS") == std::string::npos);
+  CHECK(dialog.find("OpenPlatformTextEntry(); // summon the system keyboard right away") != std::string::npos);
+  CHECK(dialog.find("ui->CreateTextEntry(*this, FieldText(), FieldRect(), mModel.draft.c_str(), kNoValIdx);") !=
+        std::string::npos);
+  // The alert caps what the keyboard can type at the dialog's own limit.
+  CHECK(dialog.find("SetTextEntryLength(static_cast<int>(mModel.maxLen));") != std::string::npos);
+
+  const auto complete = dialog.find("void OnTextEntryCompletion");
+  REQUIRE(complete != std::string::npos);
+  const auto completeEnd = dialog.find("\n  }", complete);
+  const std::string completion = dialog.substr(complete, completeEnd - complete);
+  CHECK(completion.find("#if defined OS_IOS") != std::string::npos);
+  CHECK(completion.find("Commit();") != std::string::npos);
 }
 
 TEST_CASE("Plugins ignore standalone volumUiMode in the machine file")
