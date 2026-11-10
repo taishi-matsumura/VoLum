@@ -56,6 +56,7 @@ Single-context. `CONTEXT.md` is a lazy glossary, not a spec. See
 - macOS REAPER + standalone crash smoke of the installed AU/VST3/app (empty library per launch, MallocScribble; moves the VoLum library aside and restores it): `bash NeuralAmpModeler/scripts/smoke-reaper-mac.sh --format all --runs 3` (needs REAPER in `/Applications` and a logged-in desktop; CI runs it on macOS 15)
 - Windows standalone rate/buffer switching stress: `pwsh NeuralAmpModeler/scripts/stress-standalone-rate-switch-win.ps1` (needs a real ASIO device)
 - macOS release-equivalent package: `bash NeuralAmpModeler/scripts/makedist-mac.sh full all`
+- iOS device reinstall, needed weekly because free personal-account provisioning lasts 7 days: `bash NeuralAmpModeler/scripts/ios-reinstall.sh` (Spotlight: `VoiReinstall iOS`; days left: `VoiProvisioning iOS`; device probe: `python3 NeuralAmpModeler/scripts/ios-devices.py`; regenerate the launchers with `python3 NeuralAmpModeler/scripts/macos-spotlight-app.py`)
 - Watch/dispatch CI: `pwsh NeuralAmpModeler/scripts/ci-watch.ps1 -Ref <branch> [-Dispatch] [-NoWait]`
 - Conductor loop status: `pwsh NeuralAmpModeler/scripts/conductor-status.ps1 -Effort <slug>`
 - Format: `bash format.bash`

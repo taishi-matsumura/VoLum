@@ -1,0 +1,31 @@
+{
+  "apps": [
+    {
+      "name": "VoiReinstall iOS",
+      "script": "NeuralAmpModeler/scripts/ios-reinstall.sh",
+      "title": "VoLum iOS reinstall",
+      "modes": [
+        ["Reinstall now (Release build, install, launch)", "--quiet"],
+        ["Reuse the newest build, reinstall fast", "--quiet --skip-build"],
+        ["Install only, leave the app closed", "--quiet --no-launch"],
+        ["Show which devices this Mac can install on", "--quiet --list"],
+        ["Show the script's full options (help)", "--help"]
+      ],
+      "default": 0,
+      "done_close": 20,
+      "no_close_args": ["--help", "--debug", "--list"]
+    },
+    {
+      "name": "VoiProvisioning iOS",
+      "script": "NeuralAmpModeler/scripts/ios-provisioning-check.sh",
+      "title": "VoLum iOS provisioning report",
+      "modes": [
+        ["Report days left, last backup, and errors (read-only)", ""]
+      ],
+      "default": 0,
+      "ask_arg_mode": -1,
+      "done_close": 0,
+      "no_close_args": []
+    }
+  ]
+}
